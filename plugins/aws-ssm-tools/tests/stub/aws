@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Fake AWS CLI for tests. Never touches the network.
+#
+# send-command decodes the base64 script the tools send and runs it locally
+# with fakebin/ first on PATH (fake getent/chown), so the "remote" side is
+# exercised for real inside the test sandbox ($FAKE_REMOTE_HOME).
+set -uo pipefail
+state=${AWS_STUB_STATE:?}
+printf '%s\n' "$*" >>"$state/calls"
+
+query=""
+prev=""
+for a in "$@"; do
+  [ "$prev" = --query ] && query=$a
+  [ "$prev" = --parameters ] && params=$a
+  prev=$a
+done
+
+case "$*" in
+  *"sts get-caller-identity"*)
+    [ "${AWS_STUB_AUTH:-ok}" = ok ] || { echo "ExpiredToken" >&2; exit 255; }
+    echo '{"Account":"000000000000"}' ;;
+  *"ssm describe-instance-information"*"PingStatus=="*)
+    echo "${AWS_STUB_ONLINE_IDS:-}" ;;
+  *"ssm describe-instance-information"*)
+    echo "${AWS_STUB_PING:-Online}" ;;
+  *"ssm send-command"*)
+    n=$(( $(cat "$state/n" 2>/dev/null || echo 0) + 1 )); echo "$n" >"$state/n"
+    b64=$(printf '%s' "${params:-}" | sed -E 's/.*echo ([A-Za-z0-9+\/=]+) \| base64.*/\1/')
+    printf '%s' "$b64" | base64 -d >"$state/script.$n"
+    PATH="$AWS_STUB_FAKEBIN:$PATH" bash "$state/script.$n" >"$state/out.$n" 2>"$state/err.$n"
+    echo $? >"$state/rc.$n"
+    echo "cmd-$n" ;;
+  *"ssm get-command-invocation"*)
+    n=$(printf '%s' "$*" | sed -E 's/.*--command-id cmd-([0-9]+).*/\1/')
+    case $query in
+      Status)
+        polls=$(( $(cat "$state/polls.$n" 2>/dev/null || echo 0) + 1 )); echo "$polls" >"$state/polls.$n"
+        if [ "$polls" -le "${AWS_STUB_INPROGRESS_POLLS:-0}" ]; then echo InProgress
+        elif [ -n "${AWS_STUB_FINAL_STATUS:-}" ]; then echo "$AWS_STUB_FINAL_STATUS"
+        elif [ "$(cat "$state/rc.$n")" = 0 ]; then echo Success
+        else echo Failed; fi ;;
+      StandardOutputContent) cat "$state/out.$n" ;;
+      StandardErrorContent) cat "$state/err.$n" ;;
+      ResponseCode) cat "$state/rc.$n" ;;
+    esac ;;
+  *"ec2 describe-instances"*)
+    [ "${AWS_STUB_EC2:-ok}" = ok ] || { echo "UnauthorizedOperation" >&2; exit 254; }
+    cat "${AWS_STUB_INSTANCES:?}" ;;
+  *) echo "aws stub: unhandled: $*" >&2; exit 64 ;;
+esac

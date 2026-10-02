@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Fake chown: the test user cannot chown to another user.
+exit 0

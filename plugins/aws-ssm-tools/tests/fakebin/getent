@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake getent: every user except "nobody-here" lives in $FAKE_REMOTE_HOME.
+[ "$1" = passwd ] && [ "$2" != nobody-here ] || exit 2
+printf '%s:x:1000:1000::%s:/bin/bash\n' "$2" "$FAKE_REMOTE_HOME"

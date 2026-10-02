@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Stand-in so ssm-ssh finds the plugin on PATH.
+exit 0

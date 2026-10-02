@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "claude-dev-toolkit",
-  "description": "Claude Code plugins for taking an idea from requirements to merged code.",
+  "description": "Claude Code plugins for everyday engineering work: idea to merged code, and hands-on access to private AWS instances.",
   "owner": {
     "name": "Devesh Sawant"
   },
@@ -9,10 +9,22 @@
     {
       "name": "build-flow",
       "description": "Idea to merged code: gather requirements, plan epics/stories/tasks as GitHub issues, then build them with TDD and parallel subagents.",
-      "author": { "name": "Devesh Sawant" },
+      "author": {
+        "name": "Devesh Sawant"
+      },
       "category": "workflow",
       "source": "./plugins/build-flow",
       "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/build-flow"
+    },
+    {
+      "name": "aws-ssm-tools",
+      "description": "Private EC2 instances over AWS SSM: find instances, run commands, read logs with secrets masked, temporary ssh/scp access.",
+      "author": {
+        "name": "Devesh Sawant"
+      },
+      "category": "devops",
+      "source": "./plugins/aws-ssm-tools",
+      "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/aws-ssm-tools"
     }
   ]
 }
