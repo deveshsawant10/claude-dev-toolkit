@@ -1,6 +1,6 @@
 ---
 name: req-gathering
-description: Turn a raw idea into a comprehensive, decision-ready requirements brief by asking targeted questions. Every interaction uses AskUserQuestion with 2-4 options and a recommended default. Iterates until the idea is concrete, scoped, and well-thought-out. Trigger when the user invokes `/req-gathering` or says "gather requirements", "expand my idea", "flesh this out", "turn this into a spec", or "I have an idea, help me think through it".
+description: "Turn a raw idea into a comprehensive, decision-ready requirements brief by asking targeted questions. Every interaction uses AskUserQuestion with 2-4 options and a recommended default. Iterates until the idea is concrete, scoped, and well-thought-out. Trigger when the user invokes `/req-gathering` or says \"gather requirements\", \"expand my idea\", \"flesh this out\", \"turn this into a spec\", or \"I have an idea, help me think through it\"."
 ---
 
 # req-gathering

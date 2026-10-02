@@ -1,6 +1,6 @@
 ---
 name: execute-build
-description: Drive a planned build from open GitHub issues to merged code. Loads pending issues, populates the project board with Todo→Doing→Done columns, then executes each task to its spec: TDD tests first, code to spec, exit-gate verification, doc updates, and graphify graph updates. Spawns subagents to build parallel-safe tasks concurrently. Moves cards across Todo → Doing → Done as work progresses. Trigger when the user invokes `/execute-build`, says "start building", "execute the plan", "build the open issues", "ship the backlog", or hands over after `/build-plan` and says "go".
+description: "Drive a planned build from open GitHub issues to merged code. Loads pending issues, populates the project board with Todo→Doing→Done columns, then executes each task to its spec: TDD tests first, code to spec, exit-gate verification, doc updates, and graphify graph updates. Spawns subagents to build parallel-safe tasks concurrently. Moves cards across Todo → Doing → Done as work progresses. Trigger when the user invokes `/execute-build`, says \"start building\", \"execute the plan\", \"build the open issues\", \"ship the backlog\", or hands over after `/build-plan` and says \"go\"."
 ---
 
 # execute-build

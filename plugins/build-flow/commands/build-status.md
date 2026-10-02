@@ -1,6 +1,6 @@
 ---
-description: Show epic/story/task progress for this repo's /build-plan issues and which tasks can start now
-argument-hint: [--repo OWNER/NAME] [--milestone NAME]
+description: "Show epic/story/task progress for this repo's /build-plan issues and which tasks can start now"
+argument-hint: "[--repo OWNER/NAME] [--milestone NAME]"
 ---
 
 Run `build-status $ARGUMENTS` (on PATH once build-flow is installed;

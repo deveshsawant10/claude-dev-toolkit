@@ -1,6 +1,6 @@
 ---
 name: build-plan
-description: Take a detailed requirements brief and turn it into a full implementation plan — epics, stories, tasks — applying software best practices (testing, observability, security, error handling, accessibility, docs, rollback). Identifies which tasks can run in parallel so subagents can be deployed effectively. Creates GitHub issues with proper labels, milestones, and dependency links via `gh`. Trigger when the user invokes `/build-plan`, says "create an implementation plan", "break this into epics and stories", "plan the build", "create issues for this", or hands over a requirements brief and asks "how do we build this?".
+description: "Take a detailed requirements brief and turn it into a full implementation plan — epics, stories, tasks — applying software best practices (testing, observability, security, error handling, accessibility, docs, rollback). Identifies which tasks can run in parallel so subagents can be deployed effectively. Creates GitHub issues with proper labels, milestones, and dependency links via `gh`. Trigger when the user invokes `/build-plan`, says \"create an implementation plan\", \"break this into epics and stories\", \"plan the build\", \"create issues for this\", or hands over a requirements brief and asks \"how do we build this?\"."
 ---
 
 # build-plan
