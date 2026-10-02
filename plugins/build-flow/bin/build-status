@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# PATH shim: Claude Code adds every installed plugin's bin/ to PATH, so
+# `build-status` works from any shell once build-flow is installed.
+set -euo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+exec "$here/../scripts/build_status.py" "$@"

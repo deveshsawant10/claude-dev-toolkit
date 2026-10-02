@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Fake gh for tests. Records argv, replays fixtures; never touches the network.
+set -euo pipefail
+printf '%s\n' "$*" >>"${GH_STUB_LOG:-/dev/null}"
+case "${1:-} ${2:-}" in
+  "auth status")
+    if [ "${GH_STUB_AUTH:-ok}" = ok ]; then exit 0; fi
+    echo "not logged in" >&2; exit 1 ;;
+  "repo view") echo "${GH_STUB_REPO:-acme/widgets}" ;;
+  "issue list") cat "${GH_STUB_ISSUES:?}" ;;
+  *) echo "gh stub: unhandled: $*" >&2; exit 64 ;;
+esac

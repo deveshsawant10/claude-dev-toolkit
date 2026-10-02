@@ -1,0 +1,9 @@
+[
+  {"number":1,"title":"Epic 1: Auth","state":"OPEN","labels":[{"name":"epic"}],"body":""},
+  {"number":2,"title":"Story 1.1: Login","state":"OPEN","labels":[{"name":"story"}],"body":"Part of #1"},
+  {"number":3,"title":"Task 1.1.1: Login form","state":"CLOSED","labels":[{"name":"task"},{"name":"parallel-safe"}],"body":"Part of #2"},
+  {"number":4,"title":"Task 1.1.2: Session API","state":"OPEN","labels":[{"name":"task"},{"name":"parallel-safe"}],"body":"Part of #2\nBlocked by: #3"},
+  {"number":5,"title":"Task 1.1.3: Logout","state":"OPEN","labels":[{"name":"task"}],"body":"Part of #2\nBlocked by: #4"},
+  {"number":6,"title":"Task 1.1.4: Audit log","state":"OPEN","labels":[{"name":"task"},{"name":"blocked"}],"body":"Part of #2"},
+  {"number":7,"title":"Unrelated bug","state":"OPEN","labels":[{"name":"bug"}],"body":""}
+]

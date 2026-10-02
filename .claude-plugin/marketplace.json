@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-dev-toolkit",
+  "description": "Claude Code plugins for taking an idea from requirements to merged code.",
+  "owner": {
+    "name": "Devesh Sawant"
+  },
+  "plugins": [
+    {
+      "name": "build-flow",
+      "description": "Idea to merged code: gather requirements, plan epics/stories/tasks as GitHub issues, then build them with TDD and parallel subagents.",
+      "author": { "name": "Devesh Sawant" },
+      "category": "workflow",
+      "source": "./plugins/build-flow",
+      "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/build-flow"
+    }
+  ]
+}
