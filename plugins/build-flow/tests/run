@@ -14,7 +14,7 @@ done
 
 if command -v shellcheck >/dev/null 2>&1; then
   printf 'shellcheck\n'
-  shellcheck -x ../bin/* test_*.sh helpers.sh stub/gh run || failed=$((failed + 1))
+  shellcheck -x ../bin/* ../hooks/*.sh test_*.sh helpers.sh stub/gh run || failed=$((failed + 1))
 else
   printf 'shellcheck: not installed, skipped\n'
 fi

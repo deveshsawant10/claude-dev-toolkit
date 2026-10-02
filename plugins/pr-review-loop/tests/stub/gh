@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Fake gh for tests. Logs every argument (one per line, calls separated by
+# "--"), replays fixtures, never touches the network.
+set -euo pipefail
+log=${GH_STUB_LOG:-/dev/null}
+for a in "$@"; do printf '%s\n' "$a" >>"$log"; done
+printf -- '--\n' >>"$log"
+
+query="" cursor=""
+for a in "$@"; do
+  case $a in
+    query=*) query=${a#query=} ;;
+    cursor=*) cursor=${a#cursor=} ;;
+  esac
+done
+
+case "${1:-} ${2:-}" in
+  "auth status")
+    if [ "${GH_STUB_AUTH:-ok}" = ok ]; then exit 0; fi
+    echo "not logged in" >&2; exit 1 ;;
+  "repo view") echo "${GH_STUB_REPO:-acme/widgets}" ;;
+  "pr view")
+    if [ -n "${GH_STUB_NO_PR:-}" ]; then echo "no pull requests found" >&2; exit 1; fi
+    echo 42 ;;
+  "api graphql")
+    [ -z "${GH_STUB_API_FAIL:-}" ] || { echo "HTTP 502" >&2; exit 1; }
+    case $query in
+      *reviewThreads*)
+        if [ -n "${GH_STUB_NOT_FOUND:-}" ]; then echo '{"data":{"repository":{"pullRequest":null}}}'
+        elif [ -n "$cursor" ]; then cat "$GH_STUB_FIXTURES/page2.json"
+        else cat "$GH_STUB_FIXTURES/page1.json"; fi ;;
+      *addPullRequestReviewThreadReply*)
+        echo '{"data":{"addPullRequestReviewThreadReply":{"comment":{"url":"https://github.com/acme/widgets/pull/42#discussion_r99"}}}}' ;;
+      *resolveReviewThread*)
+        if [ -n "${GH_STUB_RESOLVE_FAIL:-}" ]; then echo '{"errors":[{"message":"Resource not accessible"}]}'
+        else echo '{"data":{"resolveReviewThread":{"thread":{"isResolved":true}}}}'; fi ;;
+      *) echo "gh stub: unknown query" >&2; exit 64 ;;
+    esac ;;
+  *) echo "gh stub: unhandled: $*" >&2; exit 64 ;;
+esac

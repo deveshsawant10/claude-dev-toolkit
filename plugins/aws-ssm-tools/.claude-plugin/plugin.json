@@ -1,12 +1,20 @@
 {
   "name": "aws-ssm-tools",
-  "description": "Work on private EC2 instances through AWS Systems Manager with no bastion, open port 22 or VPN: find instances, run commands, read logs with secrets masked, and set up temporary `ssh <instance-id>` access.",
-  "version": "0.1.0",
+  "description": "Work on private EC2 instances through AWS Systems Manager with no bastion, open port 22 or VPN: find instances, run commands, read logs with secrets masked, forward ports, and set up expiring `ssh <instance-id>` access.",
+  "version": "0.2.0",
   "author": {
     "name": "Devesh Sawant"
   },
   "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/aws-ssm-tools",
   "repository": "https://github.com/deveshsawant10/claude-dev-toolkit",
   "license": "MIT",
-  "keywords": ["aws", "ssm", "ec2", "ssh", "logs", "session-manager", "devops"]
+  "keywords": [
+    "aws",
+    "ssm",
+    "ec2",
+    "ssh",
+    "logs",
+    "session-manager",
+    "devops"
+  ]
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "claude-dev-toolkit",
-  "description": "Claude Code plugins for everyday engineering work: idea to merged code, and hands-on access to private AWS instances.",
+  "description": "Claude Code plugins for everyday engineering work: idea to merged code, safe git, secret protection, PR reviews, release notes, and hands-on access to private AWS instances.",
   "owner": {
     "name": "Devesh Sawant"
   },
@@ -18,13 +18,53 @@
     },
     {
       "name": "aws-ssm-tools",
-      "description": "Private EC2 instances over AWS SSM: find instances, run commands, read logs with secrets masked, temporary ssh/scp access.",
+      "description": "Private EC2 instances over AWS SSM: find instances, run commands, read logs with secrets masked, port forwarding, temporary ssh/scp access with auto-expiry.",
       "author": {
         "name": "Devesh Sawant"
       },
       "category": "devops",
       "source": "./plugins/aws-ssm-tools",
       "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/aws-ssm-tools"
+    },
+    {
+      "name": "safe-git",
+      "description": "Guards git push run by Claude: blocks force pushes, fetches first and blocks pushes from a branch behind its remote, asks before pushing to main/master.",
+      "author": {
+        "name": "Devesh Sawant"
+      },
+      "category": "workflow",
+      "source": "./plugins/safe-git",
+      "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/safe-git"
+    },
+    {
+      "name": "secret-guard",
+      "description": "Blocks prompts that contain a token, and blocks Claude from writing tokens, AWS keys or private keys into files or commands.",
+      "author": {
+        "name": "Devesh Sawant"
+      },
+      "category": "security",
+      "source": "./plugins/secret-guard",
+      "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/secret-guard"
+    },
+    {
+      "name": "pr-review-loop",
+      "description": "Work through PR review comments: list unresolved threads, fix or push back on each, reply with the commit, resolve only what was fixed.",
+      "author": {
+        "name": "Devesh Sawant"
+      },
+      "category": "workflow",
+      "source": "./plugins/pr-review-loop",
+      "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/pr-review-loop"
+    },
+    {
+      "name": "release-notes",
+      "description": "Release notes from git history: commits between tags grouped by Conventional Commit type, breaking changes first; saves to CHANGELOG.md or a draft GitHub release only on confirmation.",
+      "author": {
+        "name": "Devesh Sawant"
+      },
+      "category": "workflow",
+      "source": "./plugins/release-notes",
+      "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/release-notes"
     }
   ]
 }

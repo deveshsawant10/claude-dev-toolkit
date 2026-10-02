@@ -17,16 +17,16 @@ assert_contains "remote shell expansion works" "$out" "5"
 assert_eq "remote exit code passes through" "$rc" 7
 assert_contains "remote stderr goes to stderr" "$(cat "$SANDBOX/e")" "oops"
 
-out=$("$BIN/ssm-run" "$ID" -- 'echo token=ghp_abcdefghijklmnopqrstuvwxyz0123456789; echo key AKIAABCDEFGHIJKLMNOP; echo password: hunter2' 2>&1)
+out=$("$BIN/ssm-run" "$ID" -- "echo token=$FAKE_GHP; echo key $FAKE_AKIA; echo password: hunter2" 2>&1)
 assert_contains "github token redacted" "$out" "token=ghp_***REDACTED***"
 assert_not_contains "github token value hidden" "$out" "abcdefghijklmnop"
 assert_contains "aws key id redacted" "$out" "AKIA***REDACTED***"
 assert_not_contains "password hidden" "$out" "hunter2"
 
-out=$("$BIN/ssm-run" "$ID" -- echo bare ghp_abcdefghijklmnopqrstuvwxyz0123456789 2>&1)
+out=$("$BIN/ssm-run" "$ID" -- echo bare "$FAKE_GHP" 2>&1)
 assert_contains "bare github token keeps its prefix" "$out" "bare ghp_***REDACTED***"
-out=$("$BIN/ssm-run" "$ID" --no-redact -- echo ghp_abcdefghijklmnopqrstuvwxyz0123456789 2>&1)
-assert_contains "--no-redact shows the raw value" "$out" "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+out=$("$BIN/ssm-run" "$ID" --no-redact -- echo "$FAKE_GHP" 2>&1)
+assert_contains "--no-redact shows the raw value" "$out" "$FAKE_GHP"
 
 printf 'echo from-file\n' >"$SANDBOX/s.sh"
 out=$("$BIN/ssm-run" "$ID" --file "$SANDBOX/s.sh" 2>&1)

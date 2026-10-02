@@ -1,0 +1,12 @@
+{
+  "name": "pr-review-loop",
+  "description": "Work through a pull request's review comments: list unresolved threads, judge each on its merits, fix or push back, run tests, push, reply with the commit, and resolve only what was actually fixed.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Devesh Sawant"
+  },
+  "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/pr-review-loop",
+  "repository": "https://github.com/deveshsawant10/claude-dev-toolkit",
+  "license": "MIT",
+  "keywords": ["github", "pull-request", "code-review", "review-comments", "workflow"]
+}

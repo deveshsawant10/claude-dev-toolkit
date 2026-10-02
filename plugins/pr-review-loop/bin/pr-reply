@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# PATH shim: Claude Code adds each installed plugin's bin/ to PATH.
+set -euo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+exec "$here/../scripts/pr_reply.py" "$@"

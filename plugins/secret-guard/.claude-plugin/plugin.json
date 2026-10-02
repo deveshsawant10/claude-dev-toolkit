@@ -1,0 +1,12 @@
+{
+  "name": "secret-guard",
+  "description": "Stops secrets before they leak: blocks a prompt that contains a token (so it never reaches the conversation log) and blocks Claude from writing tokens, AWS keys or private keys into files or shell commands.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Devesh Sawant"
+  },
+  "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/secret-guard",
+  "repository": "https://github.com/deveshsawant10/claude-dev-toolkit",
+  "license": "MIT",
+  "keywords": ["secrets", "tokens", "credentials", "leak-prevention", "hooks", "security"]
+}

@@ -8,7 +8,7 @@ logs="$SANDBOX/var/toe"
 mkdir -p "$logs/TOE_old" "$logs/TOE_new"
 seq 1 50 | sed 's/^/old line /' >"$logs/TOE_old/console.log"
 touch -t 202601010000 "$logs/TOE_old/console.log"
-{ seq 1 300 | sed 's/^/new line /'; echo "ERROR connectors.zip missing token=ghp_abcdefghijklmnopqrstuvwxyz0123"; } >"$logs/TOE_new/console.log"
+{ seq 1 300 | sed 's/^/new line /'; echo "ERROR connectors.zip missing token=${FAKE_GHP:0:36}"; } >"$logs/TOE_new/console.log"
 
 out=$("$BIN/ssm-logs" "$ID" "$logs/TOE_*/console.log" 2>&1); rc=$?
 assert_eq "exits 0" "$rc" 0

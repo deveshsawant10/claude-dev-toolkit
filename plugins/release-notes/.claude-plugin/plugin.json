@@ -1,0 +1,12 @@
+{
+  "name": "release-notes",
+  "description": "Draft release notes from git history: commits between two tags grouped by Conventional Commit type, breaking changes first, PR links and authors when gh is available. Then rewrite them for humans and, only on confirmation, prepend to CHANGELOG.md or create a draft GitHub release.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Devesh Sawant"
+  },
+  "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/release-notes",
+  "repository": "https://github.com/deveshsawant10/claude-dev-toolkit",
+  "license": "MIT",
+  "keywords": ["release-notes", "changelog", "conventional-commits", "git", "github-releases"]
+}

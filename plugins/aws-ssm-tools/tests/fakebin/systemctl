@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake systemctl: records its arguments so tests can see old timers stopped.
+printf '%s\n' "$*" >>"${AWS_STUB_STATE:?}/systemctl.calls"
+exit 0

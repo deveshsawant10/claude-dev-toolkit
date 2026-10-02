@@ -44,6 +44,20 @@ case "$*" in
       StandardErrorContent) cat "$state/err.$n" ;;
       ResponseCode) cat "$state/rc.$n" ;;
     esac ;;
+  *"ssm start-session"*)
+    # Port forwarding: pretend to be the tunnel by listening on the local port.
+    [ "${AWS_STUB_PORT:-ok}" = fail ] && { echo "TargetNotConnected: tunnel refused" >&2; exit 254; }
+    lp=$(printf '%s' "${params:-}" | sed -E 's/.*"localPortNumber":\["([0-9]+)"\].*/\1/')
+    echo "Starting session with SessionId: stub-$lp"
+    [ "${AWS_STUB_PORT:-ok}" = oneshot ] && exit 0
+    [ "${AWS_STUB_PORT:-ok}" = silent ] && exec sleep 60
+    exec python3 -c '
+import socket, sys
+s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(("127.0.0.1", int(sys.argv[1]))); s.listen(8)
+while True:
+    c, _ = s.accept(); c.sendall(b"stub-tunnel\n"); c.close()
+' "$lp" ;;
   *"ec2 describe-instances"*)
     [ "${AWS_STUB_EC2:-ok}" = ok ] || { echo "UnauthorizedOperation" >&2; exit 254; }
     cat "${AWS_STUB_INSTANCES:?}" ;;

@@ -14,6 +14,10 @@ export SSM_POLL_SECONDS=0
 export PATH="$HERE/stub:$PATH"
 mkdir -p "$HOME" "$FAKE_REMOTE_HOME" "$AWS_STUB_STATE"
 ID=i-0aaaaaaaaaaaaaaa1
+# Token-shaped test values are assembled at runtime so the repository never
+# contains a string that looks like a real credential.
+FAKE_GHP="ghp_""abcdefghijklmnopqrstuvwxyz0123456789"
+FAKE_AKIA="AKIA""ABCDEFGHIJKLMNOP"
 pass=0
 fail=0
 

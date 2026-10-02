@@ -56,4 +56,45 @@ assert_eq "hostile user name rejected" "$rc" 2
 out=$("$BIN/ssm-ssh" --remove i-0ddddddddddddddd4 2>&1); rc=$?
 assert_eq "remove of unknown instance exits 2" "$rc" 2
 
+# --- --ttl -------------------------------------------------------------
+rm -f "$AWS_STUB_STATE/systemd-run.calls" "$AWS_STUB_STATE/systemctl.calls"
+out=$("$BIN/ssm-ssh" "$ID" --user ec2-user --ttl 2h 2>&1); rc=$?
+assert_eq "ttl setup exits 0" "$rc" 0
+assert_contains "ttl uses systemd-run when present" "$out" "via systemd"
+sr=$(cat "$AWS_STUB_STATE/systemd-run.calls" 2>/dev/null)
+assert_contains "timer is 2h in seconds" "$sr" "--on-active=7200"
+assert_contains "timer unit is per instance" "$sr" "--unit aws-ssm-tools-ttl-$ID"
+assert_contains "timer deletes only our tagged line" "$sr" "/ aws-ssm-tools:$ID\$/d"
+assert_contains "old timer stopped before scheduling" "$(cat "$AWS_STUB_STATE/systemctl.calls")" "stop aws-ssm-tools-ttl-$ID.timer"
+assert_contains "--list shows expiry" "$("$BIN/ssm-ssh" --list)" "expires=20"
+assert_not_contains "--list not expired yet" "$("$BIN/ssm-ssh" --list)" "EXPIRED"
+meta="$HOME/.ssh/aws-ssm-tools/$ID/meta"
+sed -i.bak 's/^expires_epoch=.*/expires_epoch=1/' "$meta" && rm -f "$meta.bak"
+assert_contains "--list marks past expiry" "$("$BIN/ssm-ssh" --list)" "EXPIRED"
+
+"$BIN/ssm-ssh" "$ID" --user ec2-user >/dev/null 2>&1
+assert_contains "--list shows never without ttl" "$("$BIN/ssm-ssh" --list)" "expires=never"
+
+out=$(FAKE_SYSTEMD=fail "$BIN/ssm-ssh" "$ID" --user ec2-user --ttl 2s 2>&1); rc=$?
+assert_eq "fallback ttl setup exits 0" "$rc" 0
+assert_contains "falls back to a background timer" "$out" "via background"
+assert_contains "key present right after setup" "$(cat "$ak")" "aws-ssm-tools:$ID"
+sleep 4
+assert_not_contains "fallback timer removed the key" "$(cat "$ak")" "aws-ssm-tools:$ID"
+assert_contains "fallback timer kept other keys" "$(cat "$ak")" "someone@laptop"
+
+out=$(FAKE_SYSTEMD=fail "$BIN/ssm-ssh" "$ID" --user ec2-user --ttl 1h 2>&1)
+pidf="$FAKE_REMOTE_HOME/.ssh/.aws-ssm-tools-ttl-$ID.pid"
+pid=$(cat "$pidf" 2>/dev/null)
+assert_eq "fallback timer process is running" "$(kill -0 "$pid" 2>/dev/null && echo yes)" yes
+"$BIN/ssm-ssh" --remove "$ID" >/dev/null 2>&1
+sleep 0.5
+assert_eq "remove cancels the fallback timer" "$(kill -0 "$pid" 2>/dev/null && echo yes || echo no)" no
+assert_eq "remove deletes the pid file" "$([ -f "$pidf" ] && echo yes || echo no)" no
+
+for bad in 0 5x -1 31d; do
+  out=$("$BIN/ssm-ssh" "$ID" --user ec2-user --ttl "$bad" 2>&1); rc=$?
+  assert_eq "invalid --ttl $bad exits 2" "$rc" 2
+done
+
 finish

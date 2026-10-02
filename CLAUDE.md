@@ -10,4 +10,5 @@ A Claude Code plugin marketplace. Each plugin lives in `plugins/<name>/` and is 
 4. **`bin/` holds thin PATH shims only.** Claude Code adds each installed plugin's `bin/` to PATH; a shim just `exec`s the real script.
 5. **Tests never touch the network.** Fake external CLIs in `tests/stub/`.
 6. **Before committing:** run `claude plugin validate --strict` on the marketplace and the plugin, and run `plugins/<name>/tests/run`. CI runs the same checks.
-7. **No company-internal content.** This repository is public: no customer names, internal hostnames, account IDs or credentials in skills, tests or fixtures.
+7. **Skills get evals.** Add a trigger case and a should-not-trigger case under `plugins/<name>/evals/` for every new skill. They cost tokens, so CI does not run them; run them before a release.
+8. **No company-internal content.** This repository is public: no customer names, internal hostnames, account IDs or credentials in skills, tests or fixtures.

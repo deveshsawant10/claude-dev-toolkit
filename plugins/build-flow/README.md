@@ -57,6 +57,14 @@ A task is **ready** when every `Blocked by: #N` in its body points to a closed i
 
 Exit codes: `0` ok, `2` bad usage, `3` gh missing, not authenticated, or failed.
 
+## Session start summary (hook)
+
+When a session starts, resumes, or is cleared or compacted inside a repo that uses build-flow, the plugin runs `build-status` and adds a short summary to Claude's context: progress, up to 5 tasks that are ready now, and a pointer to `/execute-build`. Claude then knows where the plan stands without being asked. It does not start building on its own.
+
+- **Opt-in per repo:** it only runs when the repo has `docs/idea-*.md` or `docs/build-plan-*.md`, the files `/req-gathering` and `/build-plan` save. In any other repo it does nothing.
+- **Never blocks a session:** it gives up after 8 seconds (`BUILD_FLOW_HOOK_TIMEOUT`), and stays silent if `gh` is missing or not logged in, or there are no task issues.
+- To turn it off, disable the plugin's hooks from `/hooks`, or delete the `docs/idea-*` / `docs/build-plan-*` files from the repo.
+
 ## Layout
 
 ```
@@ -67,6 +75,10 @@ build-flow/
 │   ├── build-plan/SKILL.md
 │   └── execute-build/SKILL.md
 ├── commands/build-status.md     # /build-status
+├── hooks/
+│   ├── hooks.json               # SessionStart → session-status.sh
+│   ├── session-status.sh        # opt-in check, time limit, always exits 0
+│   └── summarize.py             # build-status JSON → hook context
 ├── bin/build-status             # PATH shim → scripts/build_status.py
 ├── scripts/build_status.py      # stdlib-only Python
 └── tests/                       # run: tests/run  (uses a fake gh, no network)

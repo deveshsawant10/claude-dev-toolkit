@@ -1,12 +1,20 @@
 {
   "name": "build-flow",
   "description": "Idea to merged code: /req-gathering turns an idea into a requirements brief, /build-plan turns the brief into epic/story/task GitHub issues with parallel batches, /execute-build drives those issues to merged PRs with TDD and parallel subagents.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Devesh Sawant"
   },
   "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/build-flow",
   "repository": "https://github.com/deveshsawant10/claude-dev-toolkit",
   "license": "MIT",
-  "keywords": ["requirements", "planning", "github", "issues", "tdd", "subagents", "workflow"]
+  "keywords": [
+    "requirements",
+    "planning",
+    "github",
+    "issues",
+    "tdd",
+    "subagents",
+    "workflow"
+  ]
 }

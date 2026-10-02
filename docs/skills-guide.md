@@ -11,7 +11,12 @@ What each skill and command is for, how to call it, what it saves you, and what 
 | aws-ssm-tools | [`ssm-ls`](#ssm-ls) | Find an instance and check SSM can reach it |
 | aws-ssm-tools | [`ssm-run`](#ssm-run) | Run one command on an instance |
 | aws-ssm-tools | [`ssm-logs`](#ssm-logs) | Read or grep the newest log file |
-| aws-ssm-tools | [`ssm-ssh`](#ssm-ssh) | Temporary `ssh` / `scp` access |
+| aws-ssm-tools | [`ssm-port`](#ssm-port) | Reach a port on (or behind) an instance at localhost |
+| aws-ssm-tools | [`ssm-ssh`](#ssm-ssh) | Temporary `ssh` / `scp` access, with optional auto-expiry |
+| safe-git | [hook](#safe-git-1) | Blocks force pushes and stale pushes, asks before `main` |
+| secret-guard | [hooks](#secret-guard-1) | Stops tokens entering the chat or being written to files |
+| pr-review-loop | [`review-loop`](#review-loop) | Work through PR review threads end to end |
+| release-notes | [`release-notes`](#release-notes-1) | Changelog from git history between tags |
 
 In Claude Code, plugin skills are namespaced, e.g. `/build-flow:build-plan`. The short form `/build-plan` works too when no other skill has the same name. You can also just describe what you want ("plan this brief", "check the logs on i-0abc…") and the skill triggers by itself.
 
@@ -128,6 +133,17 @@ Or `/build-flow:build-status` inside Claude Code.
 
 **Repeat task it replaces:** scrolling the issue list to work out what's unblocked.
 
+#### Session start summary (hook)
+
+**What it does:** when a Claude Code session starts, resumes, or is cleared or compacted in a repo that has `docs/idea-*.md` or `docs/build-plan-*.md`, build-flow runs `build-status` and gives Claude a short summary: progress, up to 5 ready tasks, and a pointer to `/execute-build`. Claude knows where the plan stands without being asked, and doesn't start building unless you say so.
+
+**What can go wrong**
+- It only runs in repos that have those docs files. Repos where you made the issues by hand get no summary.
+- It needs `gh` logged in. If `gh` is missing, logged out, or slower than 8 seconds (`BUILD_FLOW_HOOK_TIMEOUT`), it stays silent and the session starts normally.
+- To turn it off, disable the plugin's hooks in `/hooks`.
+
+**Repeat task it replaces:** typing "where are we with the plan?" at the start of every session.
+
 ---
 
 ## aws-ssm-tools
@@ -201,6 +217,31 @@ Quote the glob so your own shell doesn't expand it.
 
 **Repeat task it replaces:** opening a session, `cd`-ing into the newest TOE folder, `tail` and `grep`, then copying the error out.
 
+### ssm-port
+
+**Use it when** you need a TCP service on the instance, or one the instance can reach, on your own machine: a web UI, an internal API, a database behind it such as RDS.
+
+**How**
+```bash
+ssm-port i-0abc… 8080                                   # foreground, Ctrl-C to stop → http://localhost:8080
+ssm-port i-0abc… 5432 --host mydb.xxxx.rds.amazonaws.com --local-port 15432 --background
+ssm-port --list
+ssm-port --stop 15432                                   # or: ssm-port --stop all
+```
+
+**What you get**
+- `localhost:<port>` connected to the remote service, with no SSH key, no security group change and nothing written on the instance.
+- `--host` reaches databases and services that only the instance can see.
+- `--background` returns as soon as the port is actually listening and keeps a pid and log, so `--list` and `--stop` can manage it. `--stop` also ends the `session-manager-plugin` child process.
+
+**What can go wrong**
+- The local port defaults to the remote one, or 10000+port below 1024 (22 → 10022). If it's taken, the command fails; pick another with `--local-port`.
+- A background forward keeps running until you `--stop` it or the SSM session times out. Check `ssm-port --list`.
+- It needs `session-manager-plugin` installed locally. Your role needs `ssm:StartSession` and permission to use the port-forwarding documents.
+- If the session dies before the port opens, it exits 4 and prints the session log (with secrets masked).
+
+**Repeat task it replaces:** building long `aws ssm start-session --document-name AWS-StartPortForwardingSession… --parameters '{…}'` commands by hand and hunting down leftover tunnel processes.
+
 ### ssm-ssh
 
 **Use it when** you need a real session: interactive debugging, `scp` files in or out, or port forwarding with `ssh -L`.
@@ -208,23 +249,151 @@ Quote the glob so your own shell doesn't expand it.
 **How**
 ```bash
 ssm-ssh i-0abc… --user ec2-user --profile prod --region ap-south-1
+ssm-ssh i-0abc… --user ec2-user --ttl 2h  # key removes itself from the instance after 2h
 ssh i-0abc…
 scp ./patch.tar.gz i-0abc…:/tmp/
-ssm-ssh --list
-ssm-ssh --remove i-0abc…                 # when done
-ssm-ssh --remove i-0abc… --local-only    # instance already gone
+ssm-ssh --list                            # shows expires=… and marks EXPIRED keys
+ssm-ssh --remove i-0abc…                  # when done
+ssm-ssh --remove i-0abc… --local-only     # instance already gone
 ```
 
 **What you get**
 - Plain `ssh <instance-id>` and `scp` that work through SSM, with no key pairs to manage and no security group changes.
 - A separate key per instance, tagged so that `--remove` deletes only that key and leaves other people's keys alone.
 - Running it again is safe: it replaces the key and config instead of duplicating them.
+- `--ttl 30m|2h|1d` (max 30d) schedules removal of the key on the instance itself, so forgotten access still ends. It uses a `systemd-run` timer, or a background job where systemd isn't available. Running setup again or `--remove` cancels the old timer.
 
 **What can go wrong**
-- **A pushed key is real access until you remove it.** Run `--remove` when you're done, and use `ssm-ssh --list` to see what's still active.
+- **A pushed key is real access until it is removed.** Use `--ttl` unless you need the access to last, and run `--remove` when you're done; `--ttl` only cleans the instance, not your local key and config. Use `ssm-port` instead when you only need a TCP port.
+- Without systemd, the `--ttl` timer is a background job, which a reboot of the instance cancels. `--remove` is the reliable cleanup.
 - `--user` must exist on the instance (`ec2-user` on Amazon Linux, `ubuntu` on Ubuntu). If the user is wrong, the command fails and changes nothing.
 - It needs `session-manager-plugin` installed locally.
 - It edits `~/.ssh/config`, only inside its own marked block, placed at the top so it takes precedence over `Host *` rules.
 - If the instance is replaced (for example by an autoscaling group), the new instance has a new id, so run setup again.
 
 **Repeat task it replaces:** asking for a bastion or a port 22 rule, hunting for the right `.pem`, or typing long `aws ssm start-session` commands by hand.
+
+---
+
+## safe-git
+
+A hook, so there is no command to run. Once it is installed, it checks every `git push` Claude runs through its Bash tool.
+
+### safe-git
+
+**Use it when** Claude pushes for you (for example during `/execute-build`) and you want to be sure it never force-pushes, never pushes from a stale branch, and never lands on `main` without asking.
+
+**How**
+Install it and keep working. To change the protected branches for one repo, add `.claude/safe-git.json`:
+```json
+{ "protectedBranches": ["main", "release"] }
+```
+
+**What you get**
+- Force pushes (`--force`, `-f`, `+refspec`, `--mirror`) are blocked, and Claude is told to `git pull --rebase` instead. `--force-with-lease` is allowed.
+- Before every push it runs `git fetch`. If the branch is behind or has diverged, the push is blocked and the reason gives the exact `git pull --rebase <remote> <branch>` to run. This is the "fetch before push" rule, applied automatically.
+- A push or `--delete` aimed at `main`/`master` asks you first.
+- It understands `git -C dir push`, `cd dir && git push`, chained commands and `HEAD:main`.
+
+**What can go wrong**
+- It only sees the command line. A push inside a script (`./deploy.sh`) or a git alias is not checked.
+- It fails open: offline, unreachable remote, fetch timeout (8 s) or anything it can't parse means the push goes ahead with no message.
+- Each push costs one extra fetch, usually under a second.
+- It does not replace branch protection on GitHub. It only adds a check on your side.
+- Tags count too: moving a tag such as `uat-ami` needs a force push, so safe-git blocks it. Run that push yourself in a terminal.
+
+**Repeat task it replaces:** remembering to `git fetch` and compare before every push, and cleaning up after a force push that overwrote someone's commits.
+
+---
+
+## secret-guard
+
+Hooks, so there is no command to run. They check your messages and everything Claude writes or runs.
+
+### secret-guard
+
+**Use it when** always. It costs nothing until it finds a secret.
+
+**How**
+Install it. For a known fake value in a test fixture, add a regex to `.secret-guard-allow` at the repo root, or better, build the fake at runtime from pieces.
+
+**What you get**
+- If you paste a token into a message, the message is **not sent** and you are told to revoke it. A token pasted into chat by mistake never reaches the conversation log.
+- Claude can't write a GitHub, GitLab, AWS, Slack, Stripe, Google, Anthropic, OpenAI or npm token, or a private key, into a file, notebook or shell command. It is told to use an environment variable instead.
+- Messages name the type and location (file, line, edit number) and never the value.
+
+**What can go wrong**
+- It checks input, not output. A secret printed by `cat .env` still reaches the conversation.
+- It is pattern-based. A password with no recognisable prefix is not caught.
+- A real-looking fake in a test file is blocked until you allowlist it or build it at runtime.
+- It fails open on internal errors, so a broken Python install means no protection, silently.
+
+**Repeat task it replaces:** scrubbing a leaked token from history and rotating it after the fact.
+
+---
+
+## pr-review-loop
+
+### review-loop
+
+**Use it when** a pull request has review comments to work through.
+
+**How**
+```
+address the review comments on this PR
+```
+Or call the commands yourself:
+```bash
+pr-comments                      # unresolved threads on this branch's PR (read-only)
+pr-comments 123 --repo o/r --all
+pr-reply PRRT_kwDO… --body-file reply.md --resolve   # posts publicly
+```
+1. Claude lists every unresolved thread with its `file:line` and puts each in a bucket: agree (fix it), disagree (reply with reasoning), or unclear (ask a question). You can change any bucket.
+2. It makes one small commit per fix and runs the tests.
+3. It asks before the first push, and fetches before every push.
+4. It shows all draft replies before posting any. Each reply names the fix commit.
+5. It resolves only the threads that were actually fixed, then checks `gh pr checks` and loops until nothing is unresolved.
+
+**What you get**
+- No review comment is missed. Outdated threads are checked against the current code instead of being fixed blindly.
+- Each reviewer gets a specific answer: what changed and in which commit, or why not.
+- Threads are resolved only when the fix is pushed, so the review view stays honest.
+
+**What can go wrong**
+- **Replies are public and posted under your name.** Read the drafts.
+- It can disagree with a reviewer. That is intended, but the reasoning is only as good as its reading of the code.
+- It covers line-level review threads only, not top-level PR conversation comments.
+- If a reply fails halfway, rerun `pr-comments` before retrying so nothing is posted twice.
+
+**Repeat task it replaces:** opening each comment, fixing it, pushing, switching back to the browser, writing "done in abc123", clicking resolve, and doing that again for every thread.
+
+---
+
+## release-notes
+
+### release-notes
+
+**Use it when** you are cutting a release or updating the changelog.
+
+**How**
+```bash
+release-notes                         # newest tag → HEAD
+release-notes v1.2.0 v1.3.0           # explicit range
+release-notes --to v1.3.0             # one release; FROM = the tag before it
+release-notes --tag-pattern 'v*'      # only consider this tag family
+```
+Or ask "write release notes since v1.2.0". Claude rewrites the raw list into readable notes, shows you the draft, and only on your yes prepends it to `CHANGELOG.md` or runs `gh release create --draft`.
+
+**What you get**
+- Commits grouped as Breaking, Features, Bug fixes, Performance, Refactoring, Documentation, Maintenance and Other, with breaking changes first and their migration note shown.
+- Each merged PR appears once, with a PR link and author when `gh` is logged in.
+- It works fully offline with only git.
+- Releases are always created as drafts, so a person publishes them.
+
+**What can go wrong**
+- It is only as good as your commit messages. Without Conventional Commits, everything lands in "Other" and Claude has to group it by reading the subjects.
+- With several tag families (e.g. `app--v*` and `lib--v*`), the default FROM is the nearest tag of any family. Pass `--tag-pattern`.
+- A single argument is FROM, not TO. Use `--to v1.3.0` for one existing release.
+- With `gh`, it makes one API call per PR, which is slow on very large ranges.
+
+**Repeat task it replaces:** scrolling `git log` between two tags, sorting commits into sections, looking up PR numbers, and writing the changelog entry by hand.

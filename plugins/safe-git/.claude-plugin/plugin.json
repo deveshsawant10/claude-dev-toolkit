@@ -1,0 +1,12 @@
+{
+  "name": "safe-git",
+  "description": "PreToolUse guard for `git push` run by Claude: blocks force pushes, fetches first and blocks pushes from a branch that is behind its remote, and asks before pushing straight to a protected branch (main/master by default).",
+  "version": "0.1.0",
+  "author": {
+    "name": "Devesh Sawant"
+  },
+  "homepage": "https://github.com/deveshsawant10/claude-dev-toolkit/tree/main/plugins/safe-git",
+  "repository": "https://github.com/deveshsawant10/claude-dev-toolkit",
+  "license": "MIT",
+  "keywords": ["git", "push", "force-push", "protected-branch", "hooks", "safety"]
+}

@@ -2,6 +2,7 @@
 # Fake gh for tests. Records argv, replays fixtures; never touches the network.
 set -euo pipefail
 printf '%s\n' "$*" >>"${GH_STUB_LOG:-/dev/null}"
+[ -n "${GH_STUB_SLEEP:-}" ] && sleep "$GH_STUB_SLEEP"
 case "${1:-} ${2:-}" in
   "auth status")
     if [ "${GH_STUB_AUTH:-ok}" = ok ]; then exit 0; fi

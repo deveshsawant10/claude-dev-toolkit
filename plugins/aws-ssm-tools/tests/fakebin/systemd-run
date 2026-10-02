@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake systemd-run: records its arguments. FAKE_SYSTEMD=fail forces the
+# fallback path (as on an instance without systemd).
+printf '%s\n' "$*" >>"${AWS_STUB_STATE:?}/systemd-run.calls"
+[ "${FAKE_SYSTEMD:-ok}" = ok ]

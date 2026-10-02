@@ -13,11 +13,13 @@ TOOL="ssm-ssh"
 
 usage() {
   cat <<'USAGE'
-usage: ssm-ssh <instance-id> --user U [--profile P] [--region R]
+usage: ssm-ssh <instance-id> --user U [--ttl DURATION] [--profile P] [--region R]
        ssm-ssh --remove <instance-id> [--local-only]
        ssm-ssh --list
 
   --user U       remote login user (ec2-user on Amazon Linux, ubuntu on Ubuntu)
+  --ttl D        remove the key from the instance automatically after D
+                 (e.g. 30m, 2h, 1d; plain number = seconds; max 30d)
   --remove       delete the key from the instance and the local key + ssh config
   --local-only   with --remove: skip the instance (it is gone or unreachable)
   --list         show instances currently set up from this machine
@@ -48,10 +50,52 @@ meta() { # instance-id key -> value from the saved meta file
   sed -n "s/^$2=//p" "$KEY_ROOT/$1/meta" 2>/dev/null | head -n 1
 }
 
-mode=setup id="" user="" PROFILE="" region="" local_only=0
+ttl_seconds() { # 90 | 30s | 30m | 2h | 1d -> seconds, or nothing if invalid
+  [[ $1 =~ ^([0-9]+)([smhd]?)$ ]] || return 1
+  local n=${BASH_REMATCH[1]} unit=${BASH_REMATCH[2]}
+  case $unit in
+    ''|s) echo $((10#$n)) ;;
+    m) echo $((10#$n * 60)) ;;
+    h) echo $((10#$n * 3600)) ;;
+    d) echo $((10#$n * 86400)) ;;
+  esac
+}
+
+utc_from_epoch() { perl -MPOSIX -e 'print strftime("%Y-%m-%dT%H:%MZ", gmtime($ARGV[0]))' "$1"; }
+
+# Remote snippets. __MARKER__ / __UNIT__ are filled in below; $ak and $home
+# are remote variables, set before these run.
+# shellcheck disable=SC2016 # expanded on the instance, not here.
+CANCEL_TTL='unit=__UNIT__
+pidf="$home/.ssh/.__UNIT__.pid"
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl stop "$unit.timer" "$unit.service" >/dev/null 2>&1 || true
+  systemctl reset-failed "$unit.timer" "$unit.service" >/dev/null 2>&1 || true
+fi
+if [ -f "$pidf" ]; then
+  p=$(cat "$pidf")
+  kill -- "-$p" 2>/dev/null || kill "$p" 2>/dev/null || true
+  rm -f "$pidf"
+fi'
+# shellcheck disable=SC2016
+SCHEDULE_TTL='rmc="sed -i '"'"'/ __MARKER__\$/d'"'"' $ak; rm -f $pidf"
+if command -v systemd-run >/dev/null 2>&1 \
+   && systemd-run --quiet --on-active=__SECS__ --unit "$unit" \
+        --description "aws-ssm-tools: expire SSH key __MARKER__" \
+        /bin/sh -c "$rmc" >/dev/null 2>&1; then
+  echo ttl=systemd
+else
+  if command -v setsid >/dev/null 2>&1; then s=setsid; else s=; fi
+  nohup $s sh -c "sleep __SECS__; $rmc" >/dev/null 2>&1 &
+  echo $! >"$pidf"
+  echo ttl=background
+fi'
+
+mode=setup id="" user="" PROFILE="" region="" local_only=0 ttl=""
 while [ $# -gt 0 ]; do
   case $1 in
     --user) [ $# -ge 2 ] || { usage >&2; exit 2; }; user=$2; shift 2 ;;
+    --ttl) [ $# -ge 2 ] || { usage >&2; exit 2; }; ttl=$2; shift 2 ;;
     --profile) [ $# -ge 2 ] || { usage >&2; exit 2; }; PROFILE=$2; shift 2 ;;
     --region) [ $# -ge 2 ] || { usage >&2; exit 2; }; region=$2; shift 2 ;;
     --remove) mode=remove; shift ;;
@@ -69,8 +113,13 @@ if [ "$mode" = list ]; then
     [ -f "$d/meta" ] || continue
     found=1
     i=$(basename "$d")
-    printf '%s\tuser=%s\tprofile=%s\tregion=%s\tsince=%s\n' "$i" "$(meta "$i" user)" \
-      "$(meta "$i" profile)" "$(meta "$i" region)" "$(meta "$i" created)"
+    exp=$(meta "$i" expires)
+    exp_epoch=$(meta "$i" expires_epoch)
+    if [ -z "$exp" ]; then exp=never
+    elif [ -n "$exp_epoch" ] && [ "$(date -u +%s)" -ge "$exp_epoch" ]; then exp="$exp EXPIRED"
+    fi
+    printf '%s\tuser=%s\tprofile=%s\tregion=%s\tsince=%s\texpires=%s\n' "$i" "$(meta "$i" user)" \
+      "$(meta "$i" profile)" "$(meta "$i" region)" "$(meta "$i" created)" "$exp"
   done
   [ "$found" = 1 ] || printf 'no instances set up\n'
   exit 0
@@ -78,6 +127,8 @@ fi
 
 valid_instance_id "$id" || { usage >&2; die 2 "missing or invalid instance id: '${id}'"; }
 marker="aws-ssm-tools:$id"
+unit="aws-ssm-tools-ttl-$id"
+cancel_ttl=${CANCEL_TTL//__UNIT__/$unit}
 
 if [ "$mode" = remove ]; then
   [ -d "$KEY_ROOT/$id" ] || [ "$local_only" = 1 ] || die 2 "$id is not set up from this machine (see ssm-ssh --list)"
@@ -92,6 +143,7 @@ if [ "$mode" = remove ]; then
     remote_exec "$id" "set -e
 home=\$(getent passwd $(printf '%q' "$user") | cut -d: -f6)
 ak=\"\$home/.ssh/authorized_keys\"
+$cancel_ttl
 if [ -f \"\$ak\" ]; then sed -i '/ $marker\$/d' \"\$ak\"; fi
 echo removed" 60 1 >/dev/null
     [ "$REMOTE_RC" -eq 0 ] || die 4 "could not remove the key on $id; rerun, or use --local-only if the instance is gone"
@@ -105,6 +157,11 @@ fi
 
 [ -n "$user" ] || { usage >&2; die 2 "--user is required (ec2-user on Amazon Linux, ubuntu on Ubuntu)"; }
 [[ $user =~ ^[a-z_][a-z0-9_-]*$ ]] || die 2 "invalid user name: $user"
+ttl_secs=""
+if [ -n "$ttl" ]; then
+  ttl_secs=$(ttl_seconds "$ttl") || die 2 "invalid --ttl '$ttl' (use e.g. 30m, 2h, 1d)"
+  if [ "$ttl_secs" -lt 1 ] || [ "$ttl_secs" -gt 2592000 ]; then die 2 "--ttl must be between 1s and 30d"; fi
+fi
 command -v session-manager-plugin >/dev/null 2>&1 \
   || die 3 "session-manager-plugin not found; install it: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html"
 command -v ssh-keygen >/dev/null 2>&1 || die 3 "ssh-keygen not found"
@@ -122,6 +179,12 @@ chmod 700 "$KEY_ROOT" "$dir"
 [ -f "$key" ] || ssh-keygen -q -t ed25519 -N '' -C "$marker" -f "$key"
 pub=$(cat "$key.pub")
 
+schedule=""
+if [ -n "$ttl_secs" ]; then
+  schedule=${SCHEDULE_TTL//__MARKER__/$marker}
+  schedule=${schedule//__SECS__/$ttl_secs}
+fi
+
 remote_exec "$id" "set -e
 u=$(printf '%q' "$user")
 getent passwd \"\$u\" >/dev/null || { echo \"no user \$u on this instance\" >&2; exit 3; }
@@ -134,7 +197,9 @@ echo $(printf '%q' "$pub") >>\"\$ak\"
 chown -R \"\$u\": \"\$home/.ssh\"
 chmod 700 \"\$home/.ssh\"
 chmod 600 \"\$ak\"
-echo pushed" 60 1 >/dev/null
+$cancel_ttl
+$schedule
+echo pushed" 60 1 >"$dir/push.out"
 if [ "$REMOTE_RC" -ne 0 ] && [ "$fresh" = 1 ]; then rm -rf "${dir:?}"; fi
 [ "$REMOTE_RC" -eq 0 ] || die 4 "pushing the key to $id failed (exit $REMOTE_RC); check that user '$user' exists there"
 
@@ -160,7 +225,21 @@ tmp=$(mktemp)
 cat "$tmp" >"$SSH_CONFIG"
 rm -f "$tmp"
 
-printf 'user=%s\nprofile=%s\nregion=%s\ncreated=%s\n' "$user" "$PROFILE" "$region" \
-  "$(date -u +%Y-%m-%dT%H:%MZ)" >"$dir/meta"
+ttl_how=$(sed -n 's/^ttl=//p' "$dir/push.out" | head -n 1)
+rm -f "$dir/push.out"
+{
+  printf 'user=%s\nprofile=%s\nregion=%s\ncreated=%s\n' "$user" "$PROFILE" "$region" \
+    "$(date -u +%Y-%m-%dT%H:%MZ)"
+  if [ -n "$ttl_secs" ]; then
+    exp_epoch=$(( $(date -u +%s) + ttl_secs ))
+    printf 'expires=%s\nexpires_epoch=%s\nttl_mode=%s\n' "$(utc_from_epoch "$exp_epoch")" "$exp_epoch" "$ttl_how"
+  fi
+} >"$dir/meta"
 
-printf 'ready: ssh %s    scp <file> %s:<path>\nwhen done: ssm-ssh --remove %s\n' "$id" "$id" "$id"
+printf 'ready: ssh %s    scp <file> %s:<path>\n' "$id" "$id"
+if [ -n "$ttl_secs" ]; then
+  printf 'key expires on the instance at %s (via %s); ssm-ssh --remove %s also cleans up locally\n' \
+    "$(meta "$id" expires)" "${ttl_how:-unknown}" "$id"
+else
+  printf 'when done: ssm-ssh --remove %s\n' "$id"
+fi

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Fake gh for tests. Logs argv, answers from env, never touches the network.
+set -euo pipefail
+printf '%s\n' "$*" >>"${GH_STUB_LOG:-/dev/null}"
+case "${1:-} ${2:-}" in
+  "auth status")
+    if [ "${GH_STUB_AUTH:-ok}" = ok ]; then exit 0; fi
+    echo "not logged in" >&2; exit 1 ;;
+  "repo view") echo "${GH_STUB_REPO:-acme/widgets}" ;;
+  "pr view")
+    case $3 in
+      12) echo '{"author":{"login":"alice"},"labels":[{"name":"breaking"}]}' ;;
+      10) echo '{"author":{"login":"bob"},"labels":[{"name":"enhancement"}]}' ;;
+      *) echo "no such PR" >&2; exit 1 ;;
+    esac ;;
+  *) echo "gh stub: unhandled: $*" >&2; exit 64 ;;
+esac

@@ -1,0 +1,5 @@
+{"data":{"repository":{"pullRequest":{"number":42,"title":"Add login","url":"https://github.com/acme/widgets/pull/42","state":"OPEN","headRefName":"42-login",
+"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+{"id":"PRRT_three","isResolved":false,"isOutdated":true,"path":"src/old.py","line":null,"originalLine":9,
+ "comments":{"nodes":[{"id":"PRRC_4","url":"https://github.com/acme/widgets/pull/42#discussion_r4","body":"Why not reuse helper()?","createdAt":"2026-10-01T12:00:00Z","author":null}]}}
+]}}}}}
